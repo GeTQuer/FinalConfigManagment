@@ -1,29 +1,95 @@
 import argparse
-#для запуска:
-# python main.py --package argparse --repo-url https://github.com/GeTQuer/CLI_python.git --repo-path CLI --test-repo --version v1 --output succesful --max-depth 1
+#python main.py test.txt -t -o result.bin
+
+def parse_line(line):
+    if ';' in line:
+        line = line.split(';')[0]
+    line = line.strip()
+    if not line:
+        return None
+
+    parts = line.split()
+    cmd = parts[0]
+    args = parts[1:]
+
+    nums = []
+    for a in args:
+        a = a.rstrip(',')
+        if a.startswith('r'):
+            nums.append(int(a[1:]))
+        elif a.startswith('0x'):
+            nums.append(int(a, 16))
+        else:
+            nums.append(int(a))
+
+    return cmd, nums
+
+
+def to_ir(cmd, nums):
+    if cmd == 'load_const':
+        return {'op': 20, 'b': nums[0], 'c': nums[1]}
+    elif cmd == 'read_mem':
+        return {'op': 28, 'b': nums[0], 'c': nums[2], 'd': nums[1]}
+    elif cmd == 'write_mem':
+        return {'op': 12, 'b': nums[0], 'c': nums[1], 'd': nums[2]}
+    elif cmd == 'shift_right':
+        return {'op': 18, 'b': nums[1], 'c': nums[0]}
+
+
+def encode(ir):
+    op = ir['op']
+    b = ir['b']
+    c = ir['c']
+
+    if op == 20:
+        value = op + (b << 5) + (c << 10)
+    elif op == 28:
+        d = ir['d']
+        value = op + (b << 5) + (c << 10) + (d << 15)
+    elif op == 12:
+        d = ir['d']
+        value = op + (b << 5) + (c << 10) + (d << 15)
+    elif op == 18:
+        value = op + (b << 5) + (c << 10)
+    else:
+        value = 0
+
+    return value.to_bytes(5, byteorder='little')
+
 
 def main():
-    parser = argparse.ArgumentParser(description='Dependency graph visualizer')
-
-    parser.add_argument('--package', required=True, help='Package name')
-    parser.add_argument('--repo-url', help='Repository URL')
-    parser.add_argument('--repo-path', help='Repository file path')
-    parser.add_argument('--test-repo', action='store_true', help='Test repository mode')
-    parser.add_argument('--version', help='Package version')
-    parser.add_argument('--output', default='graph.png', help='Output image filename')
-    parser.add_argument('--max-depth', type=int, default=3, help='Max dependency depth')
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input', help='Путь к исходному файлу с текстом программы')
+    parser.add_argument('-o', '--output', help='Путь к двоичному файлу-результату')
+    parser.add_argument('-t', '--test', action='store_true', help='Режим тестирования')
     args = parser.parse_args()
 
-    repo_source = args.repo_url if args.repo_url else args.repo_path
+    with open(args.input, 'r') as f:
+        lines = [parse_line(line) for line in f if parse_line(line)]
 
-    print("package:", args.package)
-    print("repository_url:", repo_source)
-    print("test_repo_mode:", args.test_repo)
-    print("version:", args.version if args.version else "not specified")
-    print("output_filename:", args.output)
-    print("max_depth:", args.max_depth)
+    program = [to_ir(cmd, nums) for cmd, nums in lines]
+
+    if args.test:
+        print("Промежуточное представление ассемблированной программы:")
+        for i, ir in enumerate(program):
+            if ir['op'] == 20:
+                print(
+                    f'Команда {i + 1}: Код операции = {ir["op"]}, Адрес назначения = {ir["b"]}, Константа = {ir["c"]}')
+            elif ir['op'] == 28:
+                print(
+                    f'Команда {i + 1}: Код операции = {ir["op"]}, Адрес базы = {ir["b"]}, Адрес назначения = {ir["c"]}, Смещение = {ir["d"]}')
+            elif ir['op'] == 12:
+                print(
+                    f'Команда {i + 1}: Код операции = {ir["op"]}, Адрес источника = {ir["b"]}, Адрес базы = {ir["c"]}, Смещение = {ir["d"]}')
+            elif ir['op'] == 18:
+                print(
+                    f'Команда {i + 1}: Код операции = {ir["op"]}, Адрес сдвига = {ir["b"]}, Адрес значения = {ir["c"]}')
+
+    if args.output:
+        with open(args.output, 'wb') as f:
+            for ir in program:
+                f.write(encode(ir))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
