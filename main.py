@@ -2,16 +2,12 @@ import argparse
 #python main.py test.txt -t -o result.bin
 
 def parse_line(line):
-    if ';' in line:
-        line = line.split(';')[0]
     line = line.strip()
     if not line:
         return None
-
     parts = line.split()
     cmd = parts[0]
     args = parts[1:]
-
     nums = []
     for a in args:
         a = a.rstrip(',')
@@ -21,9 +17,7 @@ def parse_line(line):
             nums.append(int(a, 16))
         else:
             nums.append(int(a))
-
     return cmd, nums
-
 
 def to_ir(cmd, nums):
     if cmd == 'load_const':
@@ -35,12 +29,10 @@ def to_ir(cmd, nums):
     elif cmd == 'shift_right':
         return {'op': 18, 'b': nums[1], 'c': nums[0]}
 
-
 def encode(ir):
     op = ir['op']
     b = ir['b']
     c = ir['c']
-
     if op == 20:
         value = op + (b << 5) + (c << 10)
     elif op == 28:
@@ -53,9 +45,7 @@ def encode(ir):
         value = op + (b << 5) + (c << 10)
     else:
         value = 0
-
     return value.to_bytes(5, byteorder='little')
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -73,23 +63,30 @@ def main():
         print("Промежуточное представление ассемблированной программы:")
         for i, ir in enumerate(program):
             if ir['op'] == 20:
-                print(
-                    f'Команда {i + 1}: Код операции = {ir["op"]}, Адрес назначения = {ir["b"]}, Константа = {ir["c"]}')
+                print(f'Команда {i + 1}: A = {ir["op"]}, B = {ir["b"]}, C = {ir["c"]}')
+                binary = encode(ir)
+                hex_bytes = ', '.join(f'0x{b:02X}' for b in binary)
+                print(f'  Бинарно: {hex_bytes}')
             elif ir['op'] == 28:
-                print(
-                    f'Команда {i + 1}: Код операции = {ir["op"]}, Адрес базы = {ir["b"]}, Адрес назначения = {ir["c"]}, Смещение = {ir["d"]}')
+                print(f'Команда {i + 1}: A = {ir["op"]}, B = {ir["b"]}, C = {ir["c"]}, D = {ir["d"]}')
+                binary = encode(ir)
+                hex_bytes = ', '.join(f'0x{b:02X}' for b in binary)
+                print(f'  Бинарно: {hex_bytes}')
             elif ir['op'] == 12:
-                print(
-                    f'Команда {i + 1}: Код операции = {ir["op"]}, Адрес источника = {ir["b"]}, Адрес базы = {ir["c"]}, Смещение = {ir["d"]}')
+                print(f'Команда {i + 1}: A = {ir["op"]}, B = {ir["b"]}, C = {ir["c"]}, D = {ir["d"]}')
+                binary = encode(ir)
+                hex_bytes = ', '.join(f'0x{b:02X}' for b in binary)
+                print(f'  Бинарно: {hex_bytes}')
             elif ir['op'] == 18:
-                print(
-                    f'Команда {i + 1}: Код операции = {ir["op"]}, Адрес сдвига = {ir["b"]}, Адрес значения = {ir["c"]}')
+                print(f'Команда {i + 1}: A = {ir["op"]}, B = {ir["b"]}, C = {ir["c"]}')
+                binary = encode(ir)
+                hex_bytes = ', '.join(f'0x{b:02X}' for b in binary)
+                print(f'  Бинарно: {hex_bytes}')
 
     if args.output:
         with open(args.output, 'wb') as f:
             for ir in program:
                 f.write(encode(ir))
 
-
 if __name__ == '__main__':
-    main()
+    main()  

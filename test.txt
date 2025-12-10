@@ -1,5 +1,4 @@
-load_const r1 100
-load_const r2 200
-write_mem r1 r2 10
-read_mem r2 20 r3
-shift_right r3 r1
+load_const r11 792
+read_mem r1 20 r2
+write_mem r3 r14 40
+shift_right r5 r25
